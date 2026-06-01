@@ -6,16 +6,17 @@ const Header = () => {
     const [menuOpen, setMenuOpen] = useState(false);
 
     const navLinks = [
-        { label: "Home",    path: "/" },
-        { label: "Videos",  path: "/videos" },
-        { label: "Diet",    path: "/diet" },
-        { label: "Junkies", path: "/junkies" },
+        { label: "Home",      path: "/" },
+        { label: "Videos",    path: "/videos" },
+        { label: "Junkies",   path: "/junkies" },
+        { label: "Community", path: "/community" },
     ];
 
     return (
         <>
             <div>
-                <header className="relative z-20 flex items-center justify-between px-6 md:px-8 h-[64px]">
+                <header className="relative z-20 flex items-center justify-between px-6 md:px-8 h-[64px]
+                                   bg-black/40 backdrop-blur-md border-b border-white/10">
 
                     {/* LEFT — Logo */}
                     <div>
@@ -80,8 +81,9 @@ const Header = () => {
                 </header>
 
                 {/* MOBILE DROPDOWN MENU */}
-                <div className={`relative z-20 md:hidden bg-black/90 overflow-hidden transition-all duration-300
-                    ${menuOpen ? "max-h-96 py-2" : "max-h-0"}`}
+                <div className={`relative z-20 md:hidden bg-black/80 backdrop-blur-md
+                                 border-b border-white/10 overflow-hidden transition-all duration-300
+                                 ${menuOpen ? "max-h-96 py-2" : "max-h-0"}`}
                 >
                     <ul className="list-none m-0 p-0">
                         {navLinks.map((link) => (
@@ -117,5 +119,4 @@ const Header = () => {
         </>
     );
 };
-
 export default Header;

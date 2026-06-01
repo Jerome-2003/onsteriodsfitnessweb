@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react"
 import Header from "../components/Header"
+
+// ── Original local video imports (unchanged) ──────────────────────
+import promo1 from "../assets/promo1.mp4"
+import promo2 from "../assets/promo2.mp4"
+import promo3 from "../assets/promo3.mp4"
+import promo4 from "../assets/promo4.mp4"
+import promo5 from "../assets/promo5.mp4"
+import promo6 from "../assets/promo6.mp4"
+
 import { db, storage } from "../components/videomanager/firebase"
 import {
   collection, query, orderBy,
@@ -10,19 +19,22 @@ import {
   ref, uploadBytesResumable,
   getDownloadURL, deleteObject,
 } from "firebase/storage"
-import promo1 from "../assets/promo1.mp4"
-import promo2 from "../assets/promo2.mp4"
-import promo3 from "../assets/promo3.mp4"
-import promo4 from "../assets/promo4.mp4"
-import promo5 from "../assets/promo5.mp4"
-import promo6 from "../assets/promo6.mp4"
-
-
 
 /* ─────────────────────────────────────────────
    Videos.jsx  — CRUD-enabled via Firebase
    All original UI preserved; CRUD blended in.
 ───────────────────────────────────────────── */
+
+// ── Static local videos (original, unchanged) ────────────────────
+// Always shown first; no id so CRUD controls never appear on them
+const staticVideos = [
+  { src: promo1, title: "Full Body Home Workout" },
+  { src: promo2, title: "Leg Day Tips" },
+  { src: promo3, title: "Healthy Recipe Vlogs" },
+  { src: promo4, title: "Meal Prep Sunday" },
+  { src: promo5, title: "HIIT Cardio Blast" },
+  { src: promo6, title: "Recovery & Stretching" },
+]
 
 const Videos = () => {
   /* ── Existing carousel / player state ────── */
@@ -31,16 +43,19 @@ const Videos = () => {
   const visibleCount = 3
 
   /* ── Firebase / CRUD state ───────────────── */
-  const [videos,    setVideos]    = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [showUpload, setShowUpload] = useState(false)
-  const [title,     setTitle]     = useState("")
-  const [desc,      setDesc]      = useState("")
-  const [file,      setFile]      = useState(null)
-  const [progress,  setProgress]  = useState(null)   // 0-100 | null
-  const [editing,   setEditing]   = useState(null)   // {id, title, desc} | null
-  const [uploadErr, setUploadErr] = useState("")
+  const [firebaseVideos, setFirebaseVideos] = useState([])   // ← renamed
+  const [loading,        setLoading]        = useState(true)
+  const [showUpload,     setShowUpload]      = useState(false)
+  const [title,          setTitle]          = useState("")
+  const [desc,           setDesc]           = useState("")
+  const [file,           setFile]           = useState(null)
+  const [progress,       setProgress]       = useState(null)  // 0-100 | null
+  const [editing,        setEditing]        = useState(null)  // {id,title,desc} | null
+  const [uploadErr,      setUploadErr]      = useState("")
   const fileInputRef = useRef(null)
+
+  // Combined: original 6 first, then Firebase uploads newest-first
+  const videos = [...staticVideos, ...firebaseVideos]
 
   /* ── READ — live Firestore listener ─────── */
   useEffect(() => {
@@ -49,7 +64,7 @@ const Videos = () => {
       orderBy("createdAt", "desc")
     )
     const unsub = onSnapshot(q, (snap) => {
-      setVideos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setFirebaseVideos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
       setLoading(false)
     })
     return unsub
@@ -121,15 +136,42 @@ const Videos = () => {
   const handleNext  = () => setCarouselStart((p) => Math.min(p + 1, maxStart))
   const visibleVids = videos.slice(carouselStart, carouselStart + visibleCount)
 
-  /* ── Loading screen ─────────────────────── */
+  // Local videos have .src, Firebase videos have .url
+  const videoSrc = (v) => v.src ?? v.url
+
+  /* ── Loading screen — only shown before Firebase resolves ──── */
+  // Static promo videos still render immediately; this just prevents
+  // the carousel from flashing before Firebase videos are known.
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#E8392A] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white font-extrabold tracking-widest uppercase text-sm">
-            Loading Videos…
-          </p>
+      <div className="min-h-screen bg-[#E8392A] font-sans">
+        <Header />
+        <div className="text-white py-10 px-6 text-center">
+          <h1 className="text-4xl font-extrabold tracking-widest uppercase">Videos</h1>
+        </div>
+        {/* Show the 6 static videos immediately while Firebase loads */}
+        <div className="max-w-5xl mx-auto px-4 py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {staticVideos.map((video, index) => (
+              <div key={index} className="rounded-xl overflow-hidden shadow border border-gray-100">
+                <div className="relative bg-black aspect-video">
+                  <video src={video.src} className="w-full h-full object-cover opacity-80" muted />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-[#E8392A]/80 rounded-full p-3">
+                      <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white"><path d="M8 5v14l11-7z" /></svg>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-3 bg-white">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{video.title}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mt-8 text-white/60">
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <span className="text-xs font-semibold tracking-widest uppercase">Loading more videos…</span>
+          </div>
         </div>
       </div>
     )
@@ -413,8 +455,9 @@ const Videos = () => {
               <div className="grid grid-cols-3 gap-3">
                 {visibleVids.map((video, i) => {
                   const globalIndex = carouselStart + i
+                  const isFirebase  = Boolean(video.id)  // local vids have no id
                   return (
-                    <div key={video.id} className="relative group">
+                    <div key={video.id ?? video.src} className="relative group">
                       <button
                         onClick={() => setActiveIndex(globalIndex)}
                         className={`w-full rounded-lg overflow-hidden text-left
@@ -426,7 +469,7 @@ const Videos = () => {
                       >
                         <div className="relative bg-black aspect-video">
                           <video
-                            src={video.url}
+                            src={videoSrc(video)}
                             className="w-full h-full object-cover opacity-80"
                             muted
                           />
@@ -443,30 +486,32 @@ const Videos = () => {
                         </p>
                       </button>
 
-                      {/* CRUD controls — appear on hover */}
-                      <div className="absolute top-1.5 right-1.5 hidden group-hover:flex
-                                      gap-1 z-10">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditing({ id: video.id, title: video.title,
-                                         desc: video.description ?? "" })
-                          }}
-                          title="Edit"
-                          className="bg-gray-900/90 text-white rounded px-1.5 py-1
-                                     text-xs hover:bg-gray-700 transition"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={(e) => handleDelete(video, e)}
-                          title="Delete"
-                          className="bg-[#E8392A]/90 text-white rounded px-1.5 py-1
-                                     text-xs hover:bg-[#E8392A] transition"
-                        >
-                          🗑
-                        </button>
-                      </div>
+                      {/* CRUD controls — Firebase videos only, appear on hover */}
+                      {isFirebase && (
+                        <div className="absolute top-1.5 right-1.5 hidden group-hover:flex
+                                        gap-1 z-10">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditing({ id: video.id, title: video.title,
+                                           desc: video.description ?? "" })
+                            }}
+                            title="Edit"
+                            className="bg-gray-900/90 text-white rounded px-1.5 py-1
+                                       text-xs hover:bg-gray-700 transition"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(video, e)}
+                            title="Delete"
+                            className="bg-[#E8392A]/90 text-white rounded px-1.5 py-1
+                                       text-xs hover:bg-[#E8392A] transition"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -481,31 +526,33 @@ const Videos = () => {
                 <h3 className="text-gray-900 text-xl font-bold uppercase tracking-wide">
                   {videos[activeIndex]?.title}
                 </h3>
-                {/* Edit / delete on featured player */}
-                <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() =>
-                      setEditing({
-                        id:    videos[activeIndex].id,
-                        title: videos[activeIndex].title,
-                        desc:  videos[activeIndex].description ?? "",
-                      })
-                    }
-                    className="text-xs font-bold text-gray-700 border border-gray-300
-                               rounded-full px-3 py-1 hover:bg-gray-100
-                               transition tracking-wide uppercase"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={(e) => handleDelete(videos[activeIndex], e)}
-                    className="text-xs font-bold text-white bg-[#E8392A] rounded-full
-                               px-3 py-1 hover:bg-[#c52e21] transition
-                               tracking-wide uppercase"
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
+                {/* Edit / delete — only shown when a Firebase video is featured */}
+                {videos[activeIndex]?.id && (
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() =>
+                        setEditing({
+                          id:    videos[activeIndex].id,
+                          title: videos[activeIndex].title,
+                          desc:  videos[activeIndex].description ?? "",
+                        })
+                      }
+                      className="text-xs font-bold text-gray-700 border border-gray-300
+                                 rounded-full px-3 py-1 hover:bg-gray-100
+                                 transition tracking-wide uppercase"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(videos[activeIndex], e)}
+                      className="text-xs font-bold text-white bg-[#E8392A] rounded-full
+                                 px-3 py-1 hover:bg-[#c52e21] transition
+                                 tracking-wide uppercase"
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
+                )}
               </div>
 
               {videos[activeIndex]?.description && (
@@ -516,7 +563,7 @@ const Videos = () => {
 
               <video
                 key={activeIndex}
-                src={videos[activeIndex]?.url}
+                src={videoSrc(videos[activeIndex])}
                 controls
                 className="w-full rounded-xl shadow-md bg-black aspect-video"
               />
@@ -532,72 +579,77 @@ const Videos = () => {
               </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {videos.map((video, index) => (
-                  <div
-                    key={video.id}
-                    className="rounded-xl overflow-hidden shadow border
-                               border-gray-100 cursor-pointer group relative"
-                    onClick={() => {
-                      setActiveIndex(index)
-                      window.scrollTo({ top: 0, behavior: "smooth" })
-                    }}
-                  >
-                    <div className="relative bg-black aspect-video">
-                      <video
-                        src={video.url}
-                        className="w-full h-full object-cover opacity-80
-                                   group-hover:opacity-100 transition"
-                        muted
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-[#E8392A]/80 group-hover:bg-[#E8392A]
-                                        rounded-full p-3 transition">
-                          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
+                {videos.map((video, index) => {
+                  const isFirebase = Boolean(video.id)
+                  return (
+                    <div
+                      key={video.id ?? video.src}
+                      className="rounded-xl overflow-hidden shadow border
+                                 border-gray-100 cursor-pointer group relative"
+                      onClick={() => {
+                        setActiveIndex(index)
+                        window.scrollTo({ top: 0, behavior: "smooth" })
+                      }}
+                    >
+                      <div className="relative bg-black aspect-video">
+                        <video
+                          src={videoSrc(video)}
+                          className="w-full h-full object-cover opacity-80
+                                     group-hover:opacity-100 transition"
+                          muted
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-[#E8392A]/80 group-hover:bg-[#E8392A]
+                                          rounded-full p-3 transition">
+                            <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
                         </div>
+
+                        {/* CRUD controls — Firebase videos only, appear on hover */}
+                        {isFirebase && (
+                          <div className="absolute top-2 right-2 hidden group-hover:flex
+                                          gap-1.5 z-10">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditing({ id: video.id, title: video.title,
+                                             desc: video.description ?? "" })
+                              }}
+                              title="Edit"
+                              className="bg-gray-900/85 text-white rounded-lg
+                                         px-2.5 py-1.5 text-xs font-bold
+                                         hover:bg-gray-800 transition backdrop-blur-sm"
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={(e) => handleDelete(video, e)}
+                              title="Delete"
+                              className="bg-[#E8392A]/90 text-white rounded-lg
+                                         px-2.5 py-1.5 text-xs font-bold
+                                         hover:bg-[#E8392A] transition backdrop-blur-sm"
+                            >
+                              🗑
+                            </button>
+                          </div>
+                        )}
                       </div>
 
-                      {/* CRUD controls — hover overlay on grid card */}
-                      <div className="absolute top-2 right-2 hidden group-hover:flex
-                                      gap-1.5 z-10">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditing({ id: video.id, title: video.title,
-                                         desc: video.description ?? "" })
-                          }}
-                          title="Edit"
-                          className="bg-gray-900/85 text-white rounded-lg
-                                     px-2.5 py-1.5 text-xs font-bold
-                                     hover:bg-gray-800 transition backdrop-blur-sm"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={(e) => handleDelete(video, e)}
-                          title="Delete"
-                          className="bg-[#E8392A]/90 text-white rounded-lg
-                                     px-2.5 py-1.5 text-xs font-bold
-                                     hover:bg-[#E8392A] transition backdrop-blur-sm"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-white">
-                      <p className="font-semibold text-gray-900 text-sm truncate">
-                        {video.title}
-                      </p>
-                      {video.description && (
-                        <p className="text-gray-500 text-xs mt-0.5 truncate">
-                          {video.description}
+                      <div className="p-3 bg-white">
+                        <p className="font-semibold text-gray-900 text-sm truncate">
+                          {video.title}
                         </p>
-                      )}
+                        {video.description && (
+                          <p className="text-gray-500 text-xs mt-0.5 truncate">
+                            {video.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </>
